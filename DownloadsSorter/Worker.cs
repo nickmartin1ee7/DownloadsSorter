@@ -34,59 +34,79 @@ namespace DownloadsSorter
 
         private async void OnFileCreated(object sender, FileSystemEventArgs e)
         {
-            var targetFile = new FileInfo(e.FullPath);
-
-            if (targetFile.DirectoryName is null) return;
-
-            byte[] fileContent;
-            bool warnOnce = false;
-
-            while (true)
+            try
             {
-                try
+                var targetFile = new FileInfo(e.FullPath);
+
+                if (targetFile.DirectoryName is null) return;
+
+                byte[] fileContent;
+                bool warnOnce = false;
+
+                while (true)
                 {
-                    fileContent = await File.ReadAllBytesAsync(targetFile.FullName);
-                    break;
-                }
-                catch (IOException ex)
-                {
-                    if (!warnOnce)
+                    try
                     {
-                        _logger.LogWarning("Error reading new file ({fileName}): {exMessage}",
-                            targetFile.Name,
-                            ex.Message);
-
-                        warnOnce = true;
+                        fileContent = await File.ReadAllBytesAsync(targetFile.FullName);
+                        break;
                     }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        if (!warnOnce)
+                        {
+                            _logger.LogWarning("Failed to read new file ({fileName}): {exMessage}",
+                                targetFile.Name,
+                                ex.Message);
 
-                    await Task.Delay(1000);
+                            warnOnce = true;
+                        }
+
+                        await Task.Delay(1000);
+                    }
                 }
+
+                var mimeInfo = _mimeInspector.Inspect(fileContent);
+
+                var bestDefinition = GetBestDefinition(mimeInfo);
+
+                if (bestDefinition is null)
+                {
+                    _logger.LogWarning("No definitions found for file ({fileName})", targetFile.Name);
+                    return;
+                }
+
+                string bestExtension = targetFile.Extension.Replace(".", "");
+
+                if (bestDefinition.Definition.File.Extensions.Any() && !bestDefinition.Definition.File.Extensions.Contains(bestExtension))
+                {
+                    bestExtension = bestDefinition.Definition.File.Extensions.First();
+                }
+
+                var categoryName = bestExtension.ToUpper();
+
+                var newFilePath = DetermineNewFileEntry(
+                    Directory.CreateDirectory(
+                        Path.Combine(targetFile.DirectoryName,
+                            categoryName)),
+                    $"{Path.GetFileNameWithoutExtension(targetFile.FullName)}.{bestExtension}");
+
+                _logger.LogInformation("New file ({fileName}) determined as MIME category: {fileExtension}",
+                    targetFile.Name,
+                    categoryName);
+
+                targetFile.MoveTo(newFilePath.FullName);
             }
-
-            var mimeInfo = _mimeInspector.Inspect(fileContent);
-
-            var bestDefinition = GetBestDefinition(mimeInfo);
-
-            var bestExtension = bestDefinition.Definition.File.Extensions.FirstOrDefault()
-                ?? targetFile.Extension;
-
-            var categoryName = bestExtension.ToUpper();
-
-            var newFilePath = DetermineNewFileEntry(
-                Directory.CreateDirectory(
-                    Path.Combine(targetFile.DirectoryName,
-                        categoryName)),
-                $"{Path.GetFileNameWithoutExtension(targetFile.FullName)}.{bestExtension}");
-
-            _logger.LogInformation("New file ({fileName}) determined as MIME category: {fileExtension}",
-                targetFile.Name,
-                categoryName);
-
-            targetFile.MoveTo(newFilePath.FullName);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to handle new file ({fileName})", e.Name);
+            }
         }
 
-        private static DefinitionMatch GetBestDefinition(ImmutableArray<DefinitionMatch> matches) =>
-            matches.OrderByDescending(m => m.Percentage).First();
+        private static DefinitionMatch? GetBestDefinition(ImmutableArray<DefinitionMatch> matches)
+        {
+            if (!matches.Any()) return null;
+            return matches.OrderByDescending(m => m.Percentage).FirstOrDefault();
+        }
 
         private static FileInfo DetermineNewFileEntry(DirectoryInfo saveLocation, string fileName)
         {
