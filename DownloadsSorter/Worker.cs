@@ -72,14 +72,17 @@ namespace DownloadsSorter
                 if (bestDefinition is null)
                 {
                     _logger.LogWarning("No definitions found for file ({fileName})", targetFile.Name);
-                    return;
                 }
 
                 string bestExtension = targetFile.Extension.Replace(".", "");
 
-                if (bestDefinition.Definition.File.Extensions.Any() && !bestDefinition.Definition.File.Extensions.Contains(bestExtension))
+                if (bestDefinition != null
+                    && bestDefinition.Definition.File.Extensions.Any()
+                    && !bestDefinition.Definition.File.Extensions.Contains(bestExtension))
                 {
                     bestExtension = bestDefinition.Definition.File.Extensions.First();
+                    _logger.LogInformation("Updating file extension for {fileName} from {oldFileExtension} to {newFileExtension} in order to match it's MIME type ({mimeType})",
+                        targetFile.Name, targetFile.Extension, $".{bestExtension}", bestDefinition.Definition.File.MimeType);
                 }
 
                 var categoryName = bestExtension.ToUpper();
@@ -90,7 +93,7 @@ namespace DownloadsSorter
                             categoryName)),
                     $"{Path.GetFileNameWithoutExtension(targetFile.FullName)}.{bestExtension}");
 
-                _logger.LogInformation("New file ({fileName}) determined as MIME category: {fileExtension}",
+                _logger.LogInformation("New file ({fileName}) moving to category: {category}",
                     targetFile.Name,
                     categoryName);
 
