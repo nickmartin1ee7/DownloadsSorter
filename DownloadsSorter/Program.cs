@@ -6,9 +6,9 @@ using MimeDetective.Definitions;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
-#if RELEASE
-    .WriteTo.EventLog("Downloads Sorter", manageEventSource: true)
-#endif
+    .WriteTo.File($"{nameof(DownloadsSorter)}-.log",
+        rollingInterval: RollingInterval.Day,
+        retainedFileTimeLimit: TimeSpan.FromDays(7))
     .WriteTo.Console()
     .CreateLogger();
 
