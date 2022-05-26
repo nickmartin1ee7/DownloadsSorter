@@ -12,7 +12,10 @@ IHost host = Host.CreateDefaultBuilder(args)
             Parallel = true
         }.Build());
         services.AddSingleton<FileSystemWatcher>(_ => new FileSystemWatcher(
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")));
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"))
+        {
+            NotifyFilter = NotifyFilters.FileName,
+        });
         services.AddHostedService<Worker>();
     })
     .Build();
