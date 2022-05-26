@@ -6,7 +6,7 @@ using MimeDetective.Definitions;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
-    .WriteTo.File($"{nameof(DownloadsSorter)}-.log",
+    .WriteTo.File(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),$"{nameof(DownloadsSorter)}", $"{nameof(DownloadsSorter)}-.log"),
         rollingInterval: RollingInterval.Day,
         retainedFileTimeLimit: TimeSpan.FromDays(7))
     .WriteTo.Console()
@@ -14,6 +14,10 @@ Log.Logger = new LoggerConfiguration()
 
 IHost host = Host.CreateDefaultBuilder(args)
     .UseSerilog()
+    .UseWindowsService(options =>
+    {
+        options.ServiceName = "Downloads Sorter";
+    })
     .ConfigureServices(services =>
     {
         services.AddSingleton<ContentInspector>(_ => new ContentInspectorBuilder
