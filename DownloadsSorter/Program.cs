@@ -3,7 +3,17 @@ using DownloadsSorter;
 using MimeDetective;
 using MimeDetective.Definitions;
 
+using Serilog;
+
+Log.Logger = new LoggerConfiguration()
+#if RELEASE
+    .WriteTo.EventLog("Downloads Sorter", manageEventSource: true)
+#endif
+    .WriteTo.Console()
+    .CreateLogger();
+
 IHost host = Host.CreateDefaultBuilder(args)
+    .UseSerilog()
     .ConfigureServices(services =>
     {
         services.AddSingleton<ContentInspector>(_ => new ContentInspectorBuilder
