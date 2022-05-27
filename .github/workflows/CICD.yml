@@ -1,0 +1,37 @@
+name: CICD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  publish:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 6.0.x
+        
+    - name: Restore dependencies
+      run: dotnet restore
+         
+    - name: Publish
+      run: dotnet publish -c Release -r win-x64 -o publish
+      
+    - name: GitHub Publish - Archive
+      run: powershell Compress-Archive -Path publish\* -DestinationPath DownloadsSorter.zip
+      
+    - name: GitHub Publish - Release
+      uses: softprops/action-gh-release@v1      
+      with:
+        tag_name: ${{ github.workflow }}
+        name: Release v${{ github.run_number }}
+        draft: false
+        prerelease: false
+        files: DownloadsSorter-${{ github.run_number }}.zip
