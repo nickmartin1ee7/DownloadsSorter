@@ -89,7 +89,7 @@ namespace DownloadsSorter
 
                 if (string.IsNullOrWhiteSpace(categoryName))
                 {
-                    _logger.LogWarning("No extension/category able to be determined for {fileName}. Giving up!", targetFile.Name);
+                    _logger.LogWarning("No extension/category able to be determined for file ({fileName}). Giving up!", targetFile.Name);
                     return;
                 }
 
