@@ -25,7 +25,7 @@ jobs:
       run: dotnet publish -c Release -r win-x64 -o publish
       
     - name: GitHub Publish - Archive
-      run: powershell Compress-Archive -Path publish\* -DestinationPath DownloadsSorter.zip
+      run: powershell Compress-Archive -Path publish\* -DestinationPath DownloadsSorter-${{ github.run_number }}.zip
       
     - name: GitHub Publish - Release
       uses: softprops/action-gh-release@v1      
