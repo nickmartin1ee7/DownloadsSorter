@@ -87,6 +87,12 @@ namespace DownloadsSorter
 
                 var categoryName = bestExtension.ToUpper();
 
+                if (string.IsNullOrWhiteSpace(categoryName))
+                {
+                    _logger.LogWarning("No extension/category able to be determined for {fileName}. Giving up!", targetFile.Name);
+                    return;
+                }
+
                 var newFilePath = DetermineNewFileEntry(
                     Directory.CreateDirectory(
                         Path.Combine(targetFile.DirectoryName,
