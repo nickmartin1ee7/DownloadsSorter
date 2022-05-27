@@ -24,7 +24,7 @@ jobs:
       run: dotnet publish -c Release -r win-x64 --self-contained -p:PublishTrimmed=true -o publish
       
     - name: GitHub Publish - Archive
-      run: powershell Compress-Archive -Path publish\* -DestinationPath DownloadsSorter-${{ github.run_number }}.zip
+      run: powershell Compress-Archive -Path publish\* -DestinationPath DownloadsSorter.zip
       
     - name: GitHub Publish - Release
       uses: softprops/action-gh-release@v1      
@@ -33,4 +33,4 @@ jobs:
         name: Release v${{ github.run_number }}
         draft: false
         prerelease: false
-        files: DownloadsSorter-${{ github.run_number }}.zip
+        files: DownloadsSorter.zip
