@@ -41,6 +41,8 @@ namespace DownloadsSorter
 
         private async void OnFileEvent(object sender, FileSystemEventArgs e)
         {
+            await Task.Delay(TimeSpan.FromSeconds(5));
+
             try
             {
                 var targetFile = new FileInfo(e.FullPath);
@@ -69,7 +71,7 @@ namespace DownloadsSorter
                             warnOnce = true;
                         }
 
-                        await Task.Delay(1000);
+                        await Task.Delay(TimeSpan.FromSeconds(5));
                     }
                 }
 
