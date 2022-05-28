@@ -100,7 +100,7 @@ namespace DownloadsSorter
                     $"{Path.GetFileNameWithoutExtension(targetFile.FullName)}.{bestExtension}");
 
                 _logger.LogInformation("New file ({fileName}) moving to category: {category}",
-                    targetFile.Name,
+                    newFilePath.Name,
                     categoryName);
 
                 targetFile.MoveTo(newFilePath.FullName);
