@@ -43,6 +43,7 @@ namespace DownloadsSorter
                 byte[] fileContent;
                 bool warnOnce = false;
 
+                // Try to read the file until it's no longer in use by another process.
                 while (true)
                 {
                     try
@@ -69,15 +70,18 @@ namespace DownloadsSorter
 
                 var bestDefinition = GetBestDefinition(mimeInfo);
 
+                // Unknown MIME type, just leave the new file alone.
                 if (bestDefinition is null)
                 {
                     _logger.LogWarning("No definitions found for file ({fileName})", targetFile.Name);
+                    return;
                 }
 
+                // Default to existing extension
                 string bestExtension = targetFile.Extension.Replace(".", "");
 
-                if (bestDefinition != null
-                    && bestDefinition.Definition.File.Extensions.Any()
+                // Replace definition if it doesn't match MIME type.
+                if (bestDefinition.Definition.File.Extensions.Any()
                     && !bestDefinition.Definition.File.Extensions.Contains(bestExtension))
                 {
                     bestExtension = bestDefinition.Definition.File.Extensions.First();
@@ -85,14 +89,10 @@ namespace DownloadsSorter
                         targetFile.Name, targetFile.Extension, $".{bestExtension}", bestDefinition.Definition.File.MimeType);
                 }
 
+                // Folder names look better uppercase
                 var categoryName = bestExtension.ToUpper();
 
-                if (string.IsNullOrWhiteSpace(categoryName))
-                {
-                    _logger.LogWarning("No extension/category able to be determined for file ({fileName}). Giving up!", targetFile.Name);
-                    return;
-                }
-
+                // New file in category folder. Handles duplicate file names as well.
                 var newFilePath = DetermineNewFileEntry(
                     Directory.CreateDirectory(
                         Path.Combine(targetFile.DirectoryName,
@@ -103,6 +103,7 @@ namespace DownloadsSorter
                     newFilePath.Name,
                     categoryName);
 
+                // Finally, move to new category under new file name.
                 targetFile.MoveTo(newFilePath.FullName);
             }
             catch (Exception ex)
