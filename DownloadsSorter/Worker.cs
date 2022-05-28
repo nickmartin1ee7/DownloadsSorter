@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
 
+using HeyRed.Mime;
+
 using MimeDetective;
 using MimeDetective.Engine;
 
@@ -8,18 +10,23 @@ namespace DownloadsSorter
     public class Worker : BackgroundService
     {
         private readonly ILogger<Worker> _logger;
-        private readonly ContentInspector _mimeInspector;
+        private readonly ContentInspector _mainMimeInspector;
+        private readonly Magic _backupMimeInspector;
+        private readonly Magic _verboseMimeInspector;
         private readonly FileSystemWatcher _fileWatcher;
 
         public Worker(ILogger<Worker> logger,
-            ContentInspector mimeInspector,
-            FileSystemWatcher fileWatcher)
+            FileSystemWatcher fileWatcher,
+            ContentInspector mimeInspector)
         {
             _logger = logger;
-            _mimeInspector = mimeInspector;
+            _mainMimeInspector = mimeInspector;
+            _backupMimeInspector = new Magic(MagicOpenFlags.MAGIC_EXTENSION);
+            _verboseMimeInspector = new Magic(MagicOpenFlags.MAGIC_NONE);
             _fileWatcher = fileWatcher;
 
-            _fileWatcher.Created += OnFileCreated;
+            _fileWatcher.Created += OnFileEvent;
+            _fileWatcher.Renamed += OnFileEvent;
 
             _fileWatcher.EnableRaisingEvents = true;
         }
@@ -32,7 +39,7 @@ namespace DownloadsSorter
             }
         }
 
-        private async void OnFileCreated(object sender, FileSystemEventArgs e)
+        private async void OnFileEvent(object sender, FileSystemEventArgs e)
         {
             try
             {
@@ -66,30 +73,68 @@ namespace DownloadsSorter
                     }
                 }
 
-                var mimeInfo = _mimeInspector.Inspect(fileContent);
+                var verboseMagicInfo = _verboseMimeInspector.Read(e.FullPath);
+                var backupExtensions = _backupMimeInspector.Read(targetFile.FullName);
+
+                _logger.LogDebug("{inspector} reports that file ({fileName}) is ({mimeType}) with the following extensions ({possibleExtensions})",
+                    nameof(Magic), e.Name, verboseMagicInfo, backupExtensions);
+
+                var mimeInfo = _mainMimeInspector.Inspect(fileContent);
 
                 var bestDefinition = GetBestDefinition(mimeInfo);
 
-                // Unknown MIME type, just leave the new file alone.
-                if (bestDefinition is null)
-                {
-                    _logger.LogWarning("No definitions found for file ({fileName})", targetFile.Name);
-                    return;
-                }
-
-                // Default to existing extension
+                // Default to existing extension.
                 string bestExtension = targetFile.Extension.Replace(".", "");
 
+                bool identifiedMime = false;
+
+                // Unknown MIME type by primary MIME inspector.
+                if (bestDefinition is null)
+                {
+                    // Try backup MIME inspector
+                    var potentialExtension = backupExtensions
+                        .Split('/')
+                        .FirstOrDefault();
+
+                    if (potentialExtension is not null
+                        && !potentialExtension.Contains('?'))
+                    {
+                        identifiedMime = true;
+
+                        if (bestExtension != potentialExtension)
+                        {
+                            bestExtension = potentialExtension;
+
+                            _logger.LogInformation("Updating file extension using ({identifier}) for {fileName} from {oldFileExtension} to {newFileExtension} in order to match it's MIME type",
+                                nameof(Magic), targetFile.Name, targetFile.Extension, $".{bestExtension}");
+                        }
+                    }
+                }
                 // Replace definition if it doesn't match MIME type.
-                if (bestDefinition.Definition.File.Extensions.Any()
+                else if (bestDefinition.Definition.File.Extensions.Any()
                     && !bestDefinition.Definition.File.Extensions.Contains(bestExtension))
                 {
                     bestExtension = bestDefinition.Definition.File.Extensions.First();
-                    _logger.LogInformation("Updating file extension for {fileName} from {oldFileExtension} to {newFileExtension} in order to match it's MIME type ({mimeType})",
-                        targetFile.Name, targetFile.Extension, $".{bestExtension}", bestDefinition.Definition.File.MimeType);
+                    identifiedMime = true;
+
+                    _logger.LogInformation("Updating file extension using ({identifier}) for {fileName} from {oldFileExtension} to {newFileExtension} in order to match it's MIME type ({mimeType})",
+                        nameof(ContentInspector), targetFile.Name, targetFile.Extension, $".{bestExtension}", bestDefinition.Definition.File.MimeType);
+                }
+                else
+                {
+                    // Primary MIME Inspector had a definition, and the extension was already accurate
+                    identifiedMime = true;
                 }
 
-                // Folder names look better uppercase
+                if (!identifiedMime)
+                {
+                    _logger.LogWarning("No definitions found for file ({fileName})",
+                        targetFile.Name);
+
+                    return;
+                }
+
+                // Folder names look better uppercase.
                 var categoryName = bestExtension.ToUpper();
 
                 // New file in category folder. Handles duplicate file names as well.

@@ -1,5 +1,7 @@
 using DownloadsSorter;
 
+using HeyRed.Mime;
+
 using MimeDetective;
 using MimeDetective.Definitions;
 
@@ -10,6 +12,7 @@ Log.Logger = new LoggerConfiguration()
         rollingInterval: RollingInterval.Day,
         retainedFileTimeLimit: TimeSpan.FromDays(7))
     .WriteTo.Console()
+    .MinimumLevel.Debug()
     .CreateLogger();
 
 IHost host = Host.CreateDefaultBuilder(args)
@@ -20,11 +23,13 @@ IHost host = Host.CreateDefaultBuilder(args)
     })
     .ConfigureServices(services =>
     {
+        // MimeDetector
         services.AddSingleton<ContentInspector>(_ => new ContentInspectorBuilder
         {
             Definitions = Default.All(),
             Parallel = true
         }.Build());
+        // System.FileSystemWatcher
         services.AddSingleton<FileSystemWatcher>(_ => new FileSystemWatcher(
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"))
         {
