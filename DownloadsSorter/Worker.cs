@@ -73,8 +73,8 @@ namespace DownloadsSorter
                     }
                 }
 
-                var verboseMagicInfo = _verboseMimeInspector.Read(e.FullPath);
-                var backupExtensions = _backupMimeInspector.Read(targetFile.FullName);
+                var verboseMagicInfo = _verboseMimeInspector.Read(fileContent, fileContent.Length);
+                var backupExtensions = _backupMimeInspector.Read(fileContent, fileContent.Length);
 
                 _logger.LogDebug("{inspector} reports that file ({fileName}) is ({mimeType}) with the following extensions ({possibleExtensions})",
                     nameof(Magic), e.Name, verboseMagicInfo, backupExtensions);
