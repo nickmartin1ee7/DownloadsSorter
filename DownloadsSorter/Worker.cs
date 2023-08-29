@@ -128,14 +128,6 @@ namespace DownloadsSorter
                     identifiedMime = true;
                 }
 
-                if (!identifiedMime)
-                {
-                    _logger.LogWarning("No definitions found for file ({fileName})",
-                        targetFile.Name);
-
-                    return;
-                }
-
                 // Folder names look better uppercase.
                 var categoryName = bestExtension.ToUpper();
 
