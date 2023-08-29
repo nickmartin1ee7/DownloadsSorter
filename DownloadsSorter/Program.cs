@@ -1,26 +1,21 @@
 using DownloadsSorter;
 
-using HeyRed.Mime;
-
 using MimeDetective;
 using MimeDetective.Definitions;
 
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
-    .WriteTo.File(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),$"{nameof(DownloadsSorter)}", $"{nameof(DownloadsSorter)}-.log"),
+    .WriteTo.File(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), $"{nameof(DownloadsSorter)}", ".log"),
         rollingInterval: RollingInterval.Day,
         retainedFileTimeLimit: TimeSpan.FromDays(7))
     .WriteTo.Console()
     .MinimumLevel.Debug()
     .CreateLogger();
 
-IHost host = Host.CreateDefaultBuilder(args)
+using var host = Host.CreateDefaultBuilder(args)
     .UseSerilog()
-    .UseWindowsService(options =>
-    {
-        options.ServiceName = "Downloads Sorter";
-    })
+    .UseWindowsService()
     .ConfigureServices(services =>
     {
         // MimeDetector

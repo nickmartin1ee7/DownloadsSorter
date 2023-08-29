@@ -159,11 +159,10 @@ namespace DownloadsSorter
             }
         }
 
-        private static DefinitionMatch? GetBestDefinition(ImmutableArray<DefinitionMatch> matches)
-        {
-            if (!matches.Any()) return null;
-            return matches.OrderByDescending(m => m.Percentage).FirstOrDefault();
-        }
+        private static DefinitionMatch? GetBestDefinition(ImmutableArray<DefinitionMatch> matches) =>
+            matches.Any()
+                ? matches.MaxBy(m => m.Percentage)
+                : null;
 
         private static FileInfo DetermineNewFileEntry(DirectoryInfo saveLocation, string fileName)
         {
